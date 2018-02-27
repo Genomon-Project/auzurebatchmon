@@ -83,7 +83,6 @@ def run(args):
         client_util.get_resourcefile(blob_client, ref_container_name, ref_file_path)
         for ref_file_path in ref_file_paths]
 
-'''
     output_container_sas_token = \
         blob_client.generate_container_shared_access_signature(
             output_container_name,
@@ -113,7 +112,7 @@ def run(args):
                        sample_list[idx],
                        input_files1_resources[idx].file_path,
                        input_files2_resources[idx].file_path,
-                       conf.get("client","STORAGE_ACCOUNT_NAME"),
+                       args.STORAGE_ACCOUNT_NAME,
                        output_container_name,
                        output_container_sas_token)]
 
@@ -130,12 +129,12 @@ def run(args):
                 )
         )
   
-    batch_client.task.add_collection(conf.get("batch","JOB_ID"), tasks)
+    batch_client.task.add_collection(args.JOB_ID, tasks)
 
     # Pause execution until tasks reach Completed state.
     client_util.wait_for_tasks_to_complete(batch_client,
-               conf.get("batch","JOB_ID"),
-               datetime.timedelta(minutes=int(conf.get("batch","TIME_OUT"))))
+               args.JOB_ID,
+               datetime.timedelta(minutes=int(120)))
 
     print("  Success! All tasks reached the 'Completed' state within the "
           "specified timeout period.")
@@ -147,4 +146,3 @@ def run(args):
     print('Elapsed time: {}'.format(end_time - start_time))
 
     pass
-'''
