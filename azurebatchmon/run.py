@@ -13,25 +13,15 @@ import azure.batch.batch_auth as batchauth
 import azure.batch.models as batchmodels
 import common.helpers  # noqa
 
+from task_parser import *
+from command_maker import *
+
 def run(args):
 
     start_time = datetime.datetime.now().replace(microsecond=0)
     print('Sample start: {}'.format(start_time))
     print()
 
-    sample_list = [args.sample_name]
-    fastq_container = [args.fastq_container]
-    fastq1_list = [args.fastq1]
-    fastq2_list = [args.fastq2]
-
-    # Create the blob client
-    blob_client = azureblob.BlockBlobService(
-        account_name=args.STORAGE_ACCOUNT_NAME,
-        account_key=args.STORAGE_ACCOUNT_KEY)
-
-    # Use the blob client to create the containers in Azure Storage if they
-    # don't yet exist.
-    blob_client.create_container(args.output_container, fail_on_exist=False)
 
     # Create a Batch service client.
     credentials = batchauth.SharedKeyCredentials(
@@ -44,12 +34,13 @@ def run(args):
 
     # The resource files we pass in are used for configuring the pool's
     # start task, which is executed each time a node first joins the pool
-    task_commands = ['sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common',
-                     'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -',
-                     'sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"',
-                     'sudo apt-get update',
-                     'sudo apt-get install -y docker-ce',
-                     ]
+    pool_start_commands = [
+        'sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common',
+        'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -',
+        'sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"',
+        'sudo apt-get update',
+        'sudo apt-get install -y docker-ce',
+    ]
 
     # Create the pool that will contain the compute nodes that will execute the
     # tasks.
@@ -60,7 +51,7 @@ def run(args):
         args.NODE_OS_SKU,
         args.POOL_VM_SIZE,
         args.POOL_NODE_COUNT,
-        task_commands
+        pool_start_commands
     )
 
     # Create the job that will run the tasks.
@@ -76,55 +67,24 @@ def run(args):
     )
  
     tasks = list()
-    idx = 0
- #  for idx in range(len(input_files1_resources)):
-
-    command1 = ['docker run -v $PWD:/mnt ken01nn/lifecycle azcopy '
-               '--source https://{}.blob.core.windows.net/{} '
-               '--destination /mnt '
-               '--source-key {} '
-               '--recursive '.format(
-                   args.STORAGE_ACCOUNT_NAME,
-                   args.REF_CONTAINER_NAME,
-                   args.STORAGE_ACCOUNT_KEY)]
-
-    command2 = ['touch hogehoge']
-
-    command3 = ['docker run -v $PWD:/mnt ken01nn/lifecycle azcopy '
-               '--source /mnt/hogehoge '
-               '--destination https://{}.blob.core.windows.net/{}/hogehoge '
-               '--dest-key {}'.format(
-                   args.STORAGE_ACCOUNT_NAME,
-                   args.output_container,
-                   args.STORAGE_ACCOUNT_KEY)]
-    '''           
-    command = ['docker run -v $PWD:/mnt ken01nn/azure_batch_bwa '
-               'python /bin/python_bwa_task.py '
-               '--bwapath /bin/bwa-0.7.15/bwa '
-               '--refgenome {} --samplename {} '
-               '--fastq1 {} --fastq2 {} '
-               '--storageaccount {} '
-               '--storagecontainer {} '
-               '--sastoken "{}" '.format(
-                   ref_file_resources[0].file_path,
-                   sample_list[idx],
-                   input_files1_resources[idx].file_path,
-                   input_files2_resources[idx].file_path,
-                   args.STORAGE_ACCOUNT_NAME,
-                   output_container_name,
-                   output_container_sas_token)]
-    '''           
-    command = []
-    command.extend(command1)
-    command.extend(command2)
-    command.extend(command3)
-
-    tasks.append(batch.models.TaskAddParameter(
-            'topNtask{}'.format(idx),
-            common.helpers.wrap_commands_in_shell('linux', command),
-            user_identity=run_elevated
+    commands = list()
+    in_tasks = parseTasksFile(args.task_file)
+    for idx, task in enumerate(in_tasks):
+        for input_key in task.inputs:
+            commands.append(
+                make_download(task.inputs[input_key], args.STORAGE_ACCOUNT_KEY, False)
             )
-    )
+        for input_key in task.input_recursive:
+            commands.append(
+                make_download(task.input_recursive[input_key], args.STORAGE_ACCOUNT_KEY, True)
+            )
+
+        tasks.append(batch.models.TaskAddParameter(
+                'azbatchmon_task{}'.format(idx),
+                common.helpers.wrap_commands_in_shell('linux', commands),
+                user_identity=run_elevated
+                )
+        )
     batch_client.task.add_collection(args.JOB_ID, tasks)
 
     # Pause execution until tasks reach Completed state.
@@ -141,3 +101,33 @@ def run(args):
     print('Sample end: {}'.format(end_time))
     print('Elapsed time: {}'.format(end_time - start_time))
 
+
+
+'''           
+        command = ['docker run -v $PWD:/mnt ken01nn/azure_batch_bwa '
+                   'python /bin/python_bwa_task.py '
+                   '--bwapath /bin/bwa-0.7.15/bwa '
+                   '--refgenome {} --samplename {} '
+                   '--fastq1 {} --fastq2 {} '
+                   '--storageaccount {} '
+                   '--storagecontainer {} '
+                   '--sastoken "{}" '.format(
+                       ref_file_resources[0].file_path,
+                       sample_list[idx],
+                       input_files1_resources[idx].file_path,
+                       input_files2_resources[idx].file_path,
+                       args.STORAGE_ACCOUNT_NAME,
+                       output_container_name,
+                       output_container_sas_token)]
+        
+        command2 = ['touch hogehoge']
+
+        command3 = ['docker run -v $PWD:/mnt ken01nn/lifecycle azcopy '
+                   '--source /mnt/hogehoge '
+                   '--destination https://{}.blob.core.windows.net/{}/hogehoge '
+                   '--dest-key {}'.format(
+                       args.STORAGE_ACCOUNT_NAME,
+                       args.output_container,
+                       args.STORAGE_ACCOUNT_KEY)]
+
+'''           

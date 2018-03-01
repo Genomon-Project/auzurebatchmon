@@ -17,19 +17,6 @@ def create_parser():
     
     parser.add_argument("task_file", metavar = "task.tsv", default = None, type = str,
                         help = "")
-    parser.add_argument("sample_name", metavar = "sample_name", default = None, type = str,
-                        help = "")
-    parser.add_argument("fastq_container", metavar = "fastq_container", default = None, type = str,
-                        help = "")
-    parser.add_argument("fastq1", metavar = "fastq1.txt", default = None, type = str,
-                        help = "")
-    parser.add_argument("fastq2", metavar = "fastq2.txt", default = None, type = str,
-                        help = "")
-    parser.add_argument("output_container", metavar = "output_container", default = None, type = str,
-                        help = "")
-
-    parser.add_argument("--STORAGE_ACCOUNT_NAME", default = None, type = str, required = True,
-                        help = "")
 
     parser.add_argument("--STORAGE_ACCOUNT_KEY", default = None, type = str, required = True,
                         help = "")
@@ -65,11 +52,6 @@ def create_parser():
     parser.add_argument("--JOB_ID", default = None, type = str, required = True,
                         help = "")
 
-    parser.add_argument("--REF_CONTAINER_NAME", default = None, type = str, required = True,
-                        help = "")
-
-    parser.add_argument("--REF_FILE_PATH", default = None, type = str, required = True,
-                        help = "")
     return parser
  
 
