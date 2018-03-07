@@ -9,7 +9,7 @@ set -e
 #
 
 function precheck() {
-  if [[ -z ${INPUT} && -z ${INPUT_RECURSIVE} ]]; then
+  if [[ -z ${INPUT} && -z ${INPUT_RECURSIVE} && -z ${SCRIPT} ]]; then
     echo "Either of INPUT or INPUT_RECURSIVE must be specified to invoke 'download.sh'"
     exit 1
   fi
@@ -31,14 +31,16 @@ function download() {
      SRC=${INPUT}
   elif [[ -n ${INPUT_RECURSIVE} ]]; then
      SRC=${INPUT_RECURSIVE}
+  elif [[ -n ${SCRIPT} ]]; then
+     SRC=${SCRIPT}
   fi
   SRC_FILE=`echo $SRC | sed -E 's/^.*(http|https):\/\/([^/]+)(.*)/\3/g'`
   DEST=${DIR}${SRC_FILE}
 
   if [[ -n ${INPUT_RECURSIVE} ]]; then
-    CMD="azcopy --source $SRC --destination $DEST --source-key $STORAGE_ACCOUNT_KEY --recursive"
+    CMD="azcopy --source $SRC --destination $DEST --source-key $STORAGE_ACCOUNT_KEY --recursive --quiet"
   else
-    CMD="azcopy --source $SRC --destination $DEST --source-key $STORAGE_ACCOUNT_KEY"
+    CMD="azcopy --source $SRC --destination $DEST --source-key $STORAGE_ACCOUNT_KEY --quiet"
   fi
 
   echo "Execution: ${CMD}"

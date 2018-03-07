@@ -18,14 +18,14 @@ function precheck() {
     exit 1
   fi
   if [[ -z ${STORAGE_ACCOUNT_KEY} ]]; then
-    echo "STORAGE_ACCOUNT_KEY must be specified to invoke 'download.sh'"
+    echo "STORAGE_ACCOUNT_KEY must be specified to invoke 'upload.sh'"
     exit 1
   fi
 }
 
 function upload() {
 
-  CMD="azcopy --source $SRC --destination $DEST --dest-key $STORAGE_ACCOUNT_KEY --recursive"
+  CMD="azcopy --source $SRC --destination $DEST --dest-key $STORAGE_ACCOUNT_KEY --recursive --quiet"
 
   echo "Execution: ${CMD}"
   ${CMD} || exit $?

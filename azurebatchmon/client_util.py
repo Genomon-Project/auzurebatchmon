@@ -63,34 +63,7 @@ def print_batch_exception(batch_exception):
     print('-------------------------------------------')
 
 
-# custom def
-def get_resourcefile(block_blob_client, container_name, blob_name):
-    """
-    get Target Resource File.
-
-    :param block_blob_client: A blob service client.
-    :type block_blob_client: `azure.storage.blob.BlockBlobService`
-    :param str container_name: The name of the Azure Blob storage container.
-    :param str file_path: The local path to the file.
-    :rtype: `azure.batch.models.ResourceFile`
-    :return: A ResourceFile initialized with a SAS URL appropriate for Batch
-    tasks.
-    """
-    sas_token = block_blob_client.generate_blob_shared_access_signature(
-        container_name,
-        blob_name,
-        permission=azureblob.BlobPermissions.READ,
-        expiry=datetime.datetime.utcnow() + datetime.timedelta(hours=2))
-
-    sas_url = block_blob_client.make_blob_url(container_name,
-                                              blob_name,
-                                              sas_token=sas_token)
-
-    return batchmodels.ResourceFile(file_path=blob_name,
-                                    blob_source=sas_url)
-
-
-def create_pool(batch_service_client, pool_id,
+def create_pool(batch_service_client, pool_id, resource_files,
     publisher, offer, sku, pool_vm_size, pool_node_count, task_commands):
     """
     Creates a pool of compute nodes with the specified OS settings.
@@ -127,7 +100,8 @@ def create_pool(batch_service_client, pool_id,
             command_line=common.helpers.wrap_commands_in_shell('linux',
                                                                task_commands),
             user_identity=batchmodels.UserIdentity(auto_user=user),
-            wait_for_success=True)
+            wait_for_success=True,
+            resource_files=resource_files)
     )
 
     try:
@@ -157,40 +131,6 @@ def create_job(batch_service_client, job_id, pool_id):
     except batchmodels.batch_error.BatchErrorException as err:
         print_batch_exception(err)
         raise
-
-
-def get_output_option(block_blob_client, batch_service_client,
-              output_container_name,strage_account_name):
-    """
-    Adds a task for each input file in the collection to the specified job.
-
-    :param batch_service_client: A Batch service client.
-    :type batch_service_client: `azure.batch.BatchServiceClient`
-    :param str job_id: The ID of the job to which to add the tasks.
-    :param list input_files: A collection of input files. One task will be
-     created for each input file.
-    :param output_container_name: The ID of an Azure Blob storage container to
-    which the tasks will upload their results.
-    :param output_container_sas_token: A SAS token granting write access to
-    the specified Azure Blob storage container.
-    """
-
-    # Obtain a shared access signature that provides write access to the output
-    # container to which the tasks will upload their output.
-    output_container_sas_token = \
-        block_blob_client.generate_container_shared_access_signature(
-            output_container_name,
-            permission=azureblob.BlobPermissions.WRITE,
-            expiry=datetime.datetime.utcnow() + datetime.timedelta(hours=2))
-
-    upload_command = ['--storageaccount {} '
-                      '--storagecontainer {} '
-                      '--sastoken "{}" '.format(
-                      strage_account_name,
-                      output_container_name,
-                      output_container_sas_token)]
-  
-    return upload_command
 
 
 def wait_for_tasks_to_complete(batch_service_client, job_id, timeout):
@@ -225,4 +165,41 @@ def wait_for_tasks_to_complete(batch_service_client, job_id, timeout):
     print()
     raise RuntimeError("ERROR: Tasks did not reach 'Completed' state within "
                        "timeout period of " + str(timeout))
+
+
+def upload_file_to_container(block_blob_client, container_name, file_path):
+    """
+    Uploads a local file to an Azure Blob storage container.
+
+    :param block_blob_client: A blob service client.
+    :type block_blob_client: `azure.storage.blob.BlockBlobService`
+    :param str container_name: The name of the Azure Blob storage container.
+    :param str file_path: The local path to the file.
+    :rtype: `azure.batch.models.ResourceFile`
+    :return: A ResourceFile initialized with a SAS URL appropriate for Batch
+    tasks.
+    """
+
+    blob_name = os.path.basename(file_path)
+
+    print('Uploading file {} to container [{}]...'.format(file_path,
+                                                          container_name))
+
+    block_blob_client.create_blob_from_path(container_name,
+                                            blob_name,
+                                            file_path)
+
+    sas_token = block_blob_client.generate_blob_shared_access_signature(
+        container_name,
+        blob_name,
+        permission=azureblob.BlobPermissions.READ,
+        expiry=datetime.datetime.utcnow() + datetime.timedelta(hours=2))
+
+    sas_url = block_blob_client.make_blob_url(container_name,
+                                              blob_name,
+                                              sas_token=sas_token)
+
+    return batchmodels.ResourceFile(file_path=blob_name,
+                                    blob_source=sas_url)
+
 

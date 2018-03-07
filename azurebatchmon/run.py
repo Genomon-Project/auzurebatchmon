@@ -22,7 +22,6 @@ def run(args):
     print('Sample start: {}'.format(start_time))
     print()
 
-
     # Create a Batch service client.
     credentials = batchauth.SharedKeyCredentials(
         args.BATCH_ACCOUNT_NAME,
@@ -31,6 +30,20 @@ def run(args):
     batch_client = batch.BatchServiceClient(
         credentials,
         base_url=args.BATCH_ACCOUNT_URL)
+
+    blob_client = azureblob.BlockBlobService(
+        account_name=args.STORAGE_ACCOUNT_NAME,
+        account_key=args.STORAGE_ACCOUNT_KEY)
+
+    blob_client.create_container(
+        args.app_container,
+        fail_on_exist=False)
+
+    script_files = [
+        client_util.upload_file_to_container(blob_client,
+             args.app_container,
+             os.path.realpath(args.script_file))
+    ]
 
     # The resource files we pass in are used for configuring the pool's
     # start task, which is executed each time a node first joins the pool
@@ -46,13 +59,13 @@ def run(args):
     # tasks.
     client_util.create_pool(batch_client,
         args.POOL_ID,
+        script_files,
         args.NODE_OS_PUBLISHER,
         args.NODE_OS_OFFER,
         args.NODE_OS_SKU,
         args.POOL_VM_SIZE,
         args.POOL_NODE_COUNT,
-        pool_start_commands
-    )
+        pool_start_commands)
 
     # Create the job that will run the tasks.
     client_util.create_job(batch_client,
@@ -62,29 +75,44 @@ def run(args):
     run_elevated = batchmodels.UserIdentity(
         auto_user=batchmodels.AutoUserSpecification(
         scope=batchmodels.AutoUserScope.pool,
-        elevation_level=batchmodels.ElevationLevel.admin,
-        )
-    )
- 
+        elevation_level=batchmodels.ElevationLevel.admin,))
+
+    script_url = "https://"+ args.STORAGE_ACCOUNT_NAME +".blob.core.windows.net/"+ args.app_container +"/"+ os.path.basename(args.script_file)
+
     tasks = list()
-    commands = list()
     in_tasks = parseTasksFile(args.task_file)
     for idx, task in enumerate(in_tasks):
+
+        commands = list()
+        commands.append(
+            make_dl_script_command(script_url,
+                args.STORAGE_ACCOUNT_KEY))
+
         for input_key in task.inputs:
             commands.append(
-                make_download(task.inputs[input_key], args.STORAGE_ACCOUNT_KEY, False)
-            )
+                make_download_command(task.inputs[input_key],
+                     args.STORAGE_ACCOUNT_KEY, False))
+
         for input_key in task.input_recursive:
             commands.append(
-                make_download(task.input_recursive[input_key], args.STORAGE_ACCOUNT_KEY, True)
-            )
+                make_download_command(task.input_recursive[input_key],
+                     args.STORAGE_ACCOUNT_KEY, True))
+
+        commands.append(
+            make_analysis_command("/mnt/input", "/mnt/output",
+                task, args.image, 
+                "/mnt/script/"+args.app_container+"/"+os.path.basename(args.script_file)))
+
+        for output_key in task.output_recursive:
+            commands.append(
+                make_upload_command(task.output_recursive[output_key],
+                    args.STORAGE_ACCOUNT_KEY))
 
         tasks.append(batch.models.TaskAddParameter(
                 'azbatchmon_task{}'.format(idx),
                 common.helpers.wrap_commands_in_shell('linux', commands),
-                user_identity=run_elevated
-                )
-        )
+                user_identity=run_elevated))
+
     batch_client.task.add_collection(args.JOB_ID, tasks)
 
     # Pause execution until tasks reach Completed state.
@@ -101,33 +129,3 @@ def run(args):
     print('Sample end: {}'.format(end_time))
     print('Elapsed time: {}'.format(end_time - start_time))
 
-
-
-'''           
-        command = ['docker run -v $PWD:/mnt ken01nn/azure_batch_bwa '
-                   'python /bin/python_bwa_task.py '
-                   '--bwapath /bin/bwa-0.7.15/bwa '
-                   '--refgenome {} --samplename {} '
-                   '--fastq1 {} --fastq2 {} '
-                   '--storageaccount {} '
-                   '--storagecontainer {} '
-                   '--sastoken "{}" '.format(
-                       ref_file_resources[0].file_path,
-                       sample_list[idx],
-                       input_files1_resources[idx].file_path,
-                       input_files2_resources[idx].file_path,
-                       args.STORAGE_ACCOUNT_NAME,
-                       output_container_name,
-                       output_container_sas_token)]
-        
-        command2 = ['touch hogehoge']
-
-        command3 = ['docker run -v $PWD:/mnt ken01nn/lifecycle azcopy '
-                   '--source /mnt/hogehoge '
-                   '--destination https://{}.blob.core.windows.net/{}/hogehoge '
-                   '--dest-key {}'.format(
-                       args.STORAGE_ACCOUNT_NAME,
-                       args.output_container,
-                       args.STORAGE_ACCOUNT_KEY)]
-
-'''           
