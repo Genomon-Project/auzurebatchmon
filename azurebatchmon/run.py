@@ -6,6 +6,7 @@ import os
 import sys
 import time
 import client_util
+import uuid
 
 import azure.storage.blob as azureblob
 import azure.batch.batch_service_client as batch
@@ -22,6 +23,10 @@ def run(args):
     print('Sample start: {}'.format(start_time))
     print()
 
+    id_suffix = uuid.uuid4().hex[1:16]
+    JOB_ID = args.JOB_ID +"-"+ id_suffix 
+    POOL_ID = args.POOL_ID +"-"+ id_suffix
+
     # Create a Batch service client.
     credentials = batchauth.SharedKeyCredentials(
         args.BATCH_ACCOUNT_NAME,
@@ -36,13 +41,13 @@ def run(args):
         account_key=args.STORAGE_ACCOUNT_KEY)
 
     blob_client.create_container(
-        args.app_container,
+        args.APP_CONTAINER,
         fail_on_exist=False)
 
     script_files = [
         client_util.upload_file_to_container(blob_client,
-             args.app_container,
-             os.path.realpath(args.script_file))
+             args.APP_CONTAINER,
+             os.path.realpath(args.script))
     ]
 
     # The resource files we pass in are used for configuring the pool's
@@ -58,7 +63,7 @@ def run(args):
     # Create the pool that will contain the compute nodes that will execute the
     # tasks.
     client_util.create_pool(batch_client,
-        args.POOL_ID,
+        POOL_ID,
         script_files,
         args.NODE_OS_PUBLISHER,
         args.NODE_OS_OFFER,
@@ -69,18 +74,18 @@ def run(args):
 
     # Create the job that will run the tasks.
     client_util.create_job(batch_client,
-        args.JOB_ID,
-        args.POOL_ID)
+        JOB_ID,
+        POOL_ID)
 
     run_elevated = batchmodels.UserIdentity(
         auto_user=batchmodels.AutoUserSpecification(
         scope=batchmodels.AutoUserScope.pool,
         elevation_level=batchmodels.ElevationLevel.admin,))
 
-    script_url = "https://"+ args.STORAGE_ACCOUNT_NAME +".blob.core.windows.net/"+ args.app_container +"/"+ os.path.basename(args.script_file)
+    script_url = "https://"+ args.STORAGE_ACCOUNT_NAME +".blob.core.windows.net/"+ args.APP_CONTAINER +"/"+ os.path.basename(args.script)
 
     tasks = list()
-    in_tasks = parseTasksFile(args.task_file)
+    in_tasks = parseTasksFile(args.tasks)
     for idx, task in enumerate(in_tasks):
 
         commands = list()
@@ -89,19 +94,22 @@ def run(args):
                 args.STORAGE_ACCOUNT_KEY))
 
         for input_key in task.inputs:
-            commands.append(
-                make_download_command(task.inputs[input_key],
-                     args.STORAGE_ACCOUNT_KEY, False))
+            if len(task.inputs[input_key]) > 0:
+                commands.append(
+                    make_download_command(task.inputs[input_key],
+                        args.STORAGE_ACCOUNT_KEY, False))
 
         for input_key in task.input_recursive:
-            commands.append(
-                make_download_command(task.input_recursive[input_key],
-                     args.STORAGE_ACCOUNT_KEY, True))
+            if len(task.input_recursive[input_key]) > 0:
+                commands.append(
+                    make_download_command(task.input_recursive[input_key],
+                        args.STORAGE_ACCOUNT_KEY, True))
 
+        commands.append(make_outdir_command("/mnt/output", task))
         commands.append(
             make_analysis_command("/mnt/input", "/mnt/output",
                 task, args.image, 
-                "/mnt/script/"+args.app_container+"/"+os.path.basename(args.script_file)))
+                "/mnt/script/"+args.APP_CONTAINER+"/"+os.path.basename(args.script)))
 
         for output_key in task.output_recursive:
             commands.append(
@@ -113,15 +121,19 @@ def run(args):
                 common.helpers.wrap_commands_in_shell('linux', commands),
                 user_identity=run_elevated))
 
-    batch_client.task.add_collection(args.JOB_ID, tasks)
+    batch_client.task.add_collection(JOB_ID, tasks)
 
     # Pause execution until tasks reach Completed state.
     client_util.wait_for_tasks_to_complete(batch_client,
-               args.JOB_ID,
+               JOB_ID,
                datetime.timedelta(minutes=int(120)))
 
     print("  Success! All tasks reached the 'Completed' state within the "
           "specified timeout period.")
+
+    if not args.debug:
+        batch_client.job.delete(JOB_ID)
+        batch_client.pool.delete(POOL_ID)
 
     # Print out some timing info
     end_time = datetime.datetime.now().replace(microsecond=0)

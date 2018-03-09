@@ -28,6 +28,15 @@ def make_dl_script_command(script, sec):
     return cmd
 
 
+def make_outdir_command(out_root_dir, task):    
+
+    cmd = 'mkdir -p'
+    for key in task.output_recursive:
+        o = urlparse(task.output_recursive[key])
+        cmd += ' '+ out_root_dir + o.path
+    return cmd
+
+
 def make_analysis_command(in_root_dir, out_root_dir, task, image, script):    
 
     cmd = 'docker run -v /mnt:/mnt'

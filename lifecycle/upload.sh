@@ -25,7 +25,7 @@ function precheck() {
 
 function upload() {
 
-  CMD="azcopy --source $SRC --destination $DEST --dest-key $STORAGE_ACCOUNT_KEY --recursive --quiet"
+  CMD="azcopy --source $SRC --destination $DEST --dest-key $STORAGE_ACCOUNT_KEY --dest-type blob --recursive --quiet"
 
   echo "Execution: ${CMD}"
   ${CMD} || exit $?

@@ -10,7 +10,7 @@ set -e
 
 function precheck() {
   if [[ -z ${INPUT} && -z ${INPUT_RECURSIVE} && -z ${SCRIPT} ]]; then
-    echo "Either of INPUT or INPUT_RECURSIVE must be specified to invoke 'download.sh'"
+    echo "Either of INPUT, INPUT_RECURSIVE or SCRIPT must be specified to invoke 'download.sh'"
     exit 1
   fi
   if [[ -z ${STORAGE_ACCOUNT_KEY} ]]; then
