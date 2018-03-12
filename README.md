@@ -6,16 +6,9 @@ Wrapper program for Azure Batch simple job submission
 # Installation
 
 ```sh
-git clone https://github.com/Genomon-Project/azurebatchmon.git
-cd azurebatchmon
-pip install . --upgrade
+pip install azurebatchmon
 ```
 
-# Required packages
-
-```sh
-pip install azure-batch
-pip install azure-storage
 ```
 
 # Command

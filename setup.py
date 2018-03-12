@@ -11,7 +11,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name = 'azurebatchmon',
-    version = '0.1.0b1',
+    version = '0.1.0b2',
     description='Python tools for easy job submission to Azure Batch',
     url = 'https://github.com/Genomon-Project/azurebatchmon',
     author = 'Kenichi Chiba and Yuichi Shiraishi',
@@ -27,9 +27,14 @@ setup(
         'Topic :: Scientific/Engineering :: Bio-Informatics'
     ],
 
-    packages = find_packages(exclude = ['tests']),
+    install_requires=[
+        'azure-batch',
+        'azure-storage'
+    ],
 
-    install_requires = [],
+    packages = find_packages(exclude = ['*.pyc']),
+    package_data={'azurebatchmon': ['*']},
+
     entry_points = {'console_scripts': ['azurebatchmon = azurebatchmon:main']}
 
 )
