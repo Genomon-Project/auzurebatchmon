@@ -7,7 +7,7 @@ Wrapper program for Azure Batch simple job submission
 
 ```sh
 git clone https://github.com/Genomon-Project/azurebatchmon.git
-cd genomon_pipeline_cloud
+cd azurebatchmon
 pip install . --upgrade
 ```
 
