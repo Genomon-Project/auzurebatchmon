@@ -18,7 +18,7 @@ pip install azure-batch
 pip install azure-storage
 ```
 
-# Quick Start
+# Command
 
 ```sh
 usage: azurebatchmon [-h] [--version] --image IMAGE --tasks TASKS --script SCRIPT \
