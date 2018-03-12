@@ -11,6 +11,13 @@ cd azurebatchmon
 pip install . --upgrade
 ```
 
+# Required packages
+
+```sh
+pip install azure-batch
+pip install azure-storage
+```
+
 # Quick Start
 
 ```sh
