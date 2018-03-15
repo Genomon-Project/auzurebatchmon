@@ -4,7 +4,7 @@ import sys, os, csv
 from urlparse import urlparse
 
 
-def make_download_command(val,sec, recursive_flg):    
+def make_download_command(val,sec, recursive_flg, download_dir):    
 
     cmd = 'docker run -v /mnt:/mnt '
     if recursive_flg:
@@ -13,17 +13,17 @@ def make_download_command(val,sec, recursive_flg):
         cmd += '-e INPUT={} '.format(val)
 
     cmd += '-e STORAGE_ACCOUNT_KEY={} '.format(sec)
-    cmd += '-e DIR=/mnt/input '
+    cmd += '-e DIR={} '.format(download_dir)
     cmd += 'ken01nn/lifecycle bash /lifecycle/download.sh '
     return cmd
 
 
-def make_dl_script_command(script, sec):    
+def make_dl_script_command(download_dir, script, sec):    
 
     cmd = 'docker run -v /mnt:/mnt '
     cmd += '-e SCRIPT={} '.format(script)
     cmd += '-e STORAGE_ACCOUNT_KEY={} '.format(sec)
-    cmd += '-e DIR=/mnt/script '
+    cmd += '-e DIR={} '.format(download_dir)
     cmd += 'ken01nn/lifecycle bash /lifecycle/download.sh '
     return cmd
 
@@ -57,11 +57,11 @@ def make_analysis_command(in_root_dir, out_root_dir, task, image, script):
     return cmd
 
 
-def make_upload_command(out_url, sec):    
+def make_upload_command(out_url, sec, upload_dir):    
 
     o = urlparse(out_url)
     cmd = 'docker run -v /mnt:/mnt '
-    cmd += '-e SRC=/mnt/output'+ o.path +' '
+    cmd += '-e SRC={}'.format(upload_dir)+o.path +' '
     cmd += '-e DEST={} '.format(out_url)
     cmd += '-e STORAGE_ACCOUNT_KEY={} '.format(sec)
     cmd += 'ken01nn/lifecycle bash /lifecycle/upload.sh '

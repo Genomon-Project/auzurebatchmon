@@ -84,40 +84,43 @@ def run(args):
 
     script_url = "https://"+ args.STORAGE_ACCOUNT_NAME +".blob.core.windows.net/"+ args.APP_CONTAINER +"/"+ os.path.basename(args.script)
 
+    mount_indir = "/mnt"
+    mount_outdir = "/mnt"
+    mount_script = "/mnt/script"
     tasks = list()
     in_tasks = parseTasksFile(args.tasks)
     for idx, task in enumerate(in_tasks):
 
         commands = list()
         commands.append(
-            make_dl_script_command(script_url,
+            make_dl_script_command(mount_script, script_url,
                 args.STORAGE_ACCOUNT_KEY))
 
         for input_key in task.inputs:
             if len(task.inputs[input_key]) > 0:
                 commands.append(
                     make_download_command(task.inputs[input_key],
-                        args.STORAGE_ACCOUNT_KEY, False))
+                        args.STORAGE_ACCOUNT_KEY, False, mount_indir))
 
         for input_key in task.input_recursive:
             if len(task.input_recursive[input_key]) > 0:
                 commands.append(
                     make_download_command(task.input_recursive[input_key],
-                        args.STORAGE_ACCOUNT_KEY, True))
+                        args.STORAGE_ACCOUNT_KEY, True, mount_indir))
 
-        commands.append(make_outdir_command("/mnt/output", task))
+        commands.append(make_outdir_command(mount_outdir, task))
         commands.append(
-            make_analysis_command("/mnt/input", "/mnt/output",
+            make_analysis_command(mount_indir, mount_outdir,
                 task, args.image, 
-                "/mnt/script/"+args.APP_CONTAINER+"/"+os.path.basename(args.script)))
+                mount_script + "/"+args.APP_CONTAINER+"/"+os.path.basename(args.script)))
 
         for output_key in task.output_recursive:
             commands.append(
                 make_upload_command(task.output_recursive[output_key],
-                    args.STORAGE_ACCOUNT_KEY))
+                    args.STORAGE_ACCOUNT_KEY, mount_outdir))
 
         tasks.append(batch.models.TaskAddParameter(
-                'azbatchmon_task{}'.format(idx),
+                'azmon-task-{}'.format(idx),
                 common.helpers.wrap_commands_in_shell('linux', commands),
                 user_identity=run_elevated))
 
