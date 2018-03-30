@@ -44,12 +44,6 @@ def run(args):
         args.APP_CONTAINER,
         fail_on_exist=False)
 
-    script_files = [
-        client_util.upload_file_to_container(blob_client,
-             args.APP_CONTAINER,
-             os.path.realpath(args.script))
-    ]
-
     # The resource files we pass in are used for configuring the pool's
     # start task, which is executed each time a node first joins the pool
     pool_start_commands = [
@@ -64,12 +58,12 @@ def run(args):
     # tasks.
     client_util.create_pool(batch_client,
         POOL_ID,
-        script_files,
         args.NODE_OS_PUBLISHER,
         args.NODE_OS_OFFER,
         args.NODE_OS_SKU,
         args.POOL_VM_SIZE,
-        args.POOL_NODE_COUNT,
+        args.POOL_DEDICATED_NODE_COUNT,
+        args.POOL_LOW_PRIORITY_NODE_COUNT,
         pool_start_commands)
 
     # Create the job that will run the tasks.
@@ -127,9 +121,10 @@ def run(args):
     batch_client.task.add_collection(JOB_ID, tasks)
 
     # Pause execution until tasks reach Completed state.
+    timeout = datetime.timedelta(minutes=int(10080))
     client_util.wait_for_tasks_to_complete(batch_client,
                JOB_ID,
-               datetime.timedelta(minutes=int(120)))
+               timeout)
 
     print("  Success! All tasks reached the 'Completed' state within the "
           "specified timeout period.")
@@ -137,6 +132,16 @@ def run(args):
     if not args.debug:
         batch_client.job.delete(JOB_ID)
         batch_client.pool.delete(POOL_ID)
+
+        print("deleting pool,")
+        timeout_expiration = datetime.datetime.now() + timeout
+        while datetime.datetime.now() < timeout_expiration:
+            print('.', end='')
+            sys.stdout.flush()
+            if not batch_client.pool.exists(POOL_ID):
+                break
+            else:
+                time.sleep(1)
 
     # Print out some timing info
     end_time = datetime.datetime.now().replace(microsecond=0)

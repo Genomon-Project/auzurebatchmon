@@ -38,9 +38,9 @@ function download() {
   DEST=${DIR}${SRC_FILE}
 
   if [[ -n ${INPUT_RECURSIVE} ]]; then
-    CMD="azcopy --source $SRC --destination $DEST --source-key $STORAGE_ACCOUNT_KEY --recursive --quiet"
+    CMD="azcopy --source $SRC --destination $DEST --source-key $STORAGE_ACCOUNT_KEY --recursive --quiet --parallel-level 2"
   else
-    CMD="azcopy --source $SRC --destination $DEST --source-key $STORAGE_ACCOUNT_KEY --quiet"
+    CMD="azcopy --source $SRC --destination $DEST --source-key $STORAGE_ACCOUNT_KEY --quiet --parallel-level 2"
   fi
 
   echo "Execution: ${CMD}"

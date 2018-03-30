@@ -63,8 +63,8 @@ def print_batch_exception(batch_exception):
     print('-------------------------------------------')
 
 
-def create_pool(batch_service_client, pool_id, resource_files,
-    publisher, offer, sku, pool_vm_size, pool_node_count, task_commands):
+def create_pool(batch_service_client, pool_id,
+    publisher, offer, sku, pool_vm_size, pool_node_count, low_priority_node_count, task_commands):
     """
     Creates a pool of compute nodes with the specified OS settings.
 
@@ -96,12 +96,13 @@ def create_pool(batch_service_client, pool_id, resource_files,
             node_agent_sku_id=sku_to_use),
         vm_size=pool_vm_size,
         target_dedicated_nodes=pool_node_count,
+        target_low_priority_nodes=low_priority_node_count,
         start_task=batch.models.StartTask(
             command_line=common.helpers.wrap_commands_in_shell('linux',
                                                                task_commands),
             user_identity=batchmodels.UserIdentity(auto_user=user),
             wait_for_success=True,
-            resource_files=resource_files)
+            max_task_retry_count=-1)
     )
 
     try:
