@@ -4,36 +4,19 @@
 Wrapper program for Azure Batch simple job submission
 
 # Installation
-
 ```sh
 pip install azurebatchmon
 ```
 
-# Command
+## Requirement
+need Azure Storage account and Azure Batch account.
 
+## Task File
+
+
+## RUN
 ```sh
-usage: azurebatchmon [-h] [--version] --image IMAGE --tasks TASKS --script SCRIPT \
-                     --APP_CONTAINER APP_CONTAINER \
-                     --STORAGE_ACCOUNT_NAME STORAGE_ACCOUNT_NAME \
-                     --STORAGE_ACCOUNT_KEY STORAGE_ACCOUNT_KEY \
-                     --BATCH_ACCOUNT_NAME BATCH_ACCOUNT_NAME \
-                     --BATCH_ACCOUNT_KEY BATCH_ACCOUNT_KEY \
-                     --BATCH_ACCOUNT_URL BATCH_ACCOUNT_URL \
-                     --POOL_ID pool_id_prefix \
-                     --NODE_OS_PUBLISHER NODE_OS_PUBLISHER \
-                     --NODE_OS_OFFER NODE_OS_OFFER \
-                     --NODE_OS_SKU NODE_OS_SKU \
-                     --POOL_VM_SIZE POOL_VM_SIZE \
-                     --POOL_DEDICATED_NODE_COUNT POOL_DEDICATED_NODE_COUNT \
-                     --POOL_LOW_PRIORITY_NODE_COUNT POOL_LOW_PRIORITY_NODE_COUNT \
-                     --JOB_ID job_id_prefix
-                     [--debug]
-```
-
-## Command sample code
-
-```sh
-usage: azurebatchmon [-h] [--version] --image genomon/star_alignment:0.1.0 --tasks task_file --script star_alignment.sh \
+usage: azurebatchmon [-h] [--version] --image genomon/star_alignment:0.1.0 --tasks star-alignment-tasks.csv --script star_alignment.sh \
                      --APP_CONTAINER script \
                      --STORAGE_ACCOUNT_NAME ******** \
                      --STORAGE_ACCOUNT_KEY ******** \
@@ -50,5 +33,3 @@ usage: azurebatchmon [-h] [--version] --image genomon/star_alignment:0.1.0 --tas
                      --JOB_ID StarAlignment
                      [--debug]
 ```
-
-
